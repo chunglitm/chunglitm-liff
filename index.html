@@ -1,132 +1,413 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Chungli TM LIFF Test</title>
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Chungli TM Secure LIFF Test</title>
+
 
   <style>
+
     body {
       font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
-      padding: 25px;
+      padding: 20px;
       margin: 0;
     }
 
+
     .box {
       max-width: 600px;
-      margin: 30px auto;
+      margin: 20px auto;
       background: #1e293b;
       border-radius: 16px;
-      padding: 25px;
+      padding: 22px;
     }
+
 
     h1 {
       color: #f2df74;
-      font-size: 24px;
+      font-size: 22px;
     }
 
-    .line {
+
+    .status {
       background: #020617;
-      padding: 12px;
-      margin: 8px 0;
-      border-radius: 8px;
-      word-break: break-all;
+      border-radius: 10px;
+      padding: 14px;
+      margin: 10px 0;
+      font-size: 14px;
+      line-height: 1.5;
     }
+
 
     .ok {
       color: #34d399;
     }
 
+
     .info {
       color: #38bdf8;
     }
 
+
     .error {
       color: #f87171;
     }
+
+
+    .identity {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      background: #0b132b;
+      border: 1px solid #059669;
+      border-radius: 12px;
+    }
+
+
+    .identity-name {
+      color: #f2df74;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+
+    .identity-uid {
+      color: #94a3b8;
+      font-family: monospace;
+      font-size: 11px;
+      word-break: break-all;
+    }
+
+
+    iframe {
+      display: none;
+    }
+
   </style>
+
 </head>
+
 
 <body>
 
+
 <div class="box">
 
-  <h1>🧪 Chungli TM LIFF Test</h1>
+  <h1>🔐 Chungli TM Hardened V2</h1>
 
-  <div id="log"></div>
+
+  <div
+    id="liffStatus"
+    class="status info"
+  >
+    ⏳ Starting LIFF...
+  </div>
+
+
+  <div
+    id="serverStatus"
+    class="status info"
+  >
+    ⏳ Waiting for secure Apps Script bridge...
+  </div>
+
+
+  <div
+    id="identityBox"
+    class="identity"
+  >
+
+    <div
+      class="identity-name"
+      id="identityName"
+    ></div>
+
+
+    <div class="ok">
+      ✅ Identity verified by LINE server
+    </div>
+
+
+    <div
+      class="identity-uid"
+      id="identityUid"
+    ></div>
+
+  </div>
 
 </div>
 
 
+
+<!--
+  Apps Script secure bridge.
+
+  It is deliberately hidden.
+
+  IMPORTANT:
+  The LIFF SDK runs ONLY in the GitHub top-level page.
+-->
+
+<iframe
+  id="appsScriptBridge"
+  src="https://script.google.com/macros/s/AKfycbyhmPjTJwPqJtoa8vqBRkKbozqA3id1SK3d9HDsDp2RD-UCiKWHuCa55ZElZtrx3SpUag/exec?page=guest"
+></iframe>
+
+
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
 
 <script>
 
-const LIFF_ID = "2011276672-eLuALXUR";
+const LIFF_ID =
+  "2011276672-eLuALXUR";
 
-function log(text, type = "") {
 
-  const div = document.createElement("div");
+let idToken =
+  "";
 
-  div.className = "line " + type;
 
-  div.textContent = text;
+let bridgeWindow =
+  null;
 
-  document.getElementById("log").appendChild(div);
+
+let bridgeOrigin =
+  "";
+
+
+/**
+ * ============================================================
+ * Receive secure messages from Apps Script bridge
+ * ============================================================
+ */
+
+window.addEventListener(
+  "message",
+  function(event) {
+
+
+    // ----------------------------------------------------------
+    // Bridge announces itself first.
+    //
+    // We do NOT guess the dynamic googleusercontent origin.
+    // We learn it from the iframe window itself.
+    // ----------------------------------------------------------
+
+    if (
+      event.data &&
+      event.data.type ===
+        "CHUNGLI_LIFF_BRIDGE_READY"
+    ) {
+
+      const iframe =
+        document.getElementById(
+          "appsScriptBridge"
+        );
+
+
+      if (
+        event.source !==
+        iframe.contentWindow
+      ) {
+        return;
+      }
+
+
+      bridgeWindow =
+        event.source;
+
+
+      bridgeOrigin =
+        event.origin;
+
+
+      document.getElementById(
+        "serverStatus"
+      ).textContent =
+        "✅ Secure bridge connected.";
+
+
+      document.getElementById(
+        "serverStatus"
+      ).className =
+        "status ok";
+
+
+      tryVerify();
+
+      return;
+    }
+
+
+    // ----------------------------------------------------------
+    // Verification result
+    // ----------------------------------------------------------
+
+    if (
+      event.data &&
+      event.data.type ===
+        "CHUNGLI_VERIFY_RESULT"
+    ) {
+
+
+      if (
+        !bridgeWindow ||
+        event.source !== bridgeWindow ||
+        event.origin !== bridgeOrigin
+      ) {
+        return;
+      }
+
+
+      const result =
+        event.data.result || {};
+
+
+      if (
+        result.ok &&
+        result.verified
+      ) {
+
+        document.getElementById(
+          "serverStatus"
+        ).textContent =
+          "✅ Server-side LINE verification PASSED";
+
+
+        document.getElementById(
+          "serverStatus"
+        ).className =
+          "status ok";
+
+
+        document.getElementById(
+          "identityBox"
+        ).style.display =
+          "block";
+
+
+        document.getElementById(
+          "identityName"
+        ).textContent =
+          result.displayName ||
+          "LINE User";
+
+
+        document.getElementById(
+          "identityUid"
+        ).textContent =
+          "Verified UID: " +
+          result.userId;
+
+
+      } else {
+
+        document.getElementById(
+          "serverStatus"
+        ).textContent =
+          "❌ Server verification failed: " +
+          (
+            result.error ||
+            "Unknown error"
+          );
+
+
+        document.getElementById(
+          "serverStatus"
+        ).className =
+          "status error";
+      }
+    }
+
+  }
+);
+
+
+
+/**
+ * ============================================================
+ * Send token only after BOTH sides are ready
+ * ============================================================
+ */
+
+function tryVerify() {
+
+  if (
+    !idToken ||
+    !bridgeWindow ||
+    !bridgeOrigin
+  ) {
+    return;
+  }
+
+
+  document.getElementById(
+    "serverStatus"
+  ).textContent =
+    "⏳ LINE server is verifying your identity...";
+
+
+  document.getElementById(
+    "serverStatus"
+  ).className =
+    "status info";
+
+
+  bridgeWindow.postMessage(
+    {
+      type:
+        "CHUNGLI_VERIFY_LIFF_TOKEN",
+
+      idToken:
+        idToken
+    },
+
+    bridgeOrigin
+  );
+
 }
 
 
-async function start() {
 
-  log("1. Page loaded", "ok");
+/**
+ * ============================================================
+ * LIFF Startup
+ * ============================================================
+ */
 
-  log(
-    "2. Current URL: " + window.location.href,
-    "info"
-  );
+async function startLiff() {
 
-  log(
-    "3. LIFF SDK: " + typeof liff,
-    typeof liff === "object" ? "ok" : "error"
-  );
+  const status =
+    document.getElementById(
+      "liffStatus"
+    );
 
 
   try {
 
-    log("4. Calling liff.init()...", "info");
-
     await liff.init({
-      liffId: LIFF_ID
+      liffId:
+        LIFF_ID
     });
 
-    log("5. LIFF initialized successfully!", "ok");
 
+    if (!liff.isLoggedIn()) {
 
-    const inClient = liff.isInClient();
+      status.textContent =
+        "🔐 Redirecting to LINE Login...";
 
-    log(
-      "6. Running inside LINE: " + inClient,
-      "info"
-    );
-
-
-    const loggedIn = liff.isLoggedIn();
-
-    log(
-      "7. Logged in: " + loggedIn,
-      "info"
-    );
-
-
-    if (!loggedIn) {
-
-      log(
-        "8. Starting LINE Login...",
-        "info"
-      );
 
       liff.login();
 
@@ -134,56 +415,55 @@ async function start() {
     }
 
 
-    const token = liff.getIDToken();
+    idToken =
+      liff.getIDToken();
 
-    if (token) {
 
-      log(
-        "8. ID Token acquired ✅",
-        "ok"
-      );
+    if (!idToken) {
 
-    } else {
-
-      log(
-        "8. ID Token NOT available ❌",
-        "error"
+      throw new Error(
+        "LINE ID Token unavailable."
       );
     }
 
 
-    const profile = await liff.getProfile();
-
-    log(
-      "9. LINE profile acquired: " +
-      profile.displayName,
-      "ok"
-    );
+    status.textContent =
+      "✅ LIFF login successful. ID Token acquired.";
 
 
-    log(
-      "🎉 LIFF TEST PASSED",
-      "ok"
-    );
+    status.className =
+      "status ok";
+
+
+    tryVerify();
 
 
   } catch (err) {
 
-    log(
-      "❌ ERROR: " +
-      (err.message || String(err)),
-      "error"
-    );
+    status.textContent =
+      "❌ LIFF error: " +
+      (
+        err && err.message
+          ? err.message
+          : String(err)
+      );
+
+
+    status.className =
+      "status error";
   }
+
 }
+
 
 
 window.addEventListener(
   "load",
-  start
+  startLiff
 );
 
 </script>
+
 
 </body>
 </html>
