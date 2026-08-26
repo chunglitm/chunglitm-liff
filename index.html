@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Chungli TM LIFF Test</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      padding: 25px;
+      margin: 0;
+    }
+
+    .box {
+      max-width: 600px;
+      margin: 30px auto;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 25px;
+    }
+
+    h1 {
+      color: #f2df74;
+      font-size: 24px;
+    }
+
+    .line {
+      background: #020617;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      word-break: break-all;
+    }
+
+    .ok {
+      color: #34d399;
+    }
+
+    .info {
+      color: #38bdf8;
+    }
+
+    .error {
+      color: #f87171;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h1>🧪 Chungli TM LIFF Test</h1>
+
+  <div id="log"></div>
+
+</div>
+
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+<script>
+
+const LIFF_ID = "2011276672-eLuALXUR";
+
+function log(text, type = "") {
+
+  const div = document.createElement("div");
+
+  div.className = "line " + type;
+
+  div.textContent = text;
+
+  document.getElementById("log").appendChild(div);
+}
+
+
+async function start() {
+
+  log("1. Page loaded", "ok");
+
+  log(
+    "2. Current URL: " + window.location.href,
+    "info"
+  );
+
+  log(
+    "3. LIFF SDK: " + typeof liff,
+    typeof liff === "object" ? "ok" : "error"
+  );
+
+
+  try {
+
+    log("4. Calling liff.init()...", "info");
+
+    await liff.init({
+      liffId: LIFF_ID
+    });
+
+    log("5. LIFF initialized successfully!", "ok");
+
+
+    const inClient = liff.isInClient();
+
+    log(
+      "6. Running inside LINE: " + inClient,
+      "info"
+    );
+
+
+    const loggedIn = liff.isLoggedIn();
+
+    log(
+      "7. Logged in: " + loggedIn,
+      "info"
+    );
+
+
+    if (!loggedIn) {
+
+      log(
+        "8. Starting LINE Login...",
+        "info"
+      );
+
+      liff.login();
+
+      return;
+    }
+
+
+    const token = liff.getIDToken();
+
+    if (token) {
+
+      log(
+        "8. ID Token acquired ✅",
+        "ok"
+      );
+
+    } else {
+
+      log(
+        "8. ID Token NOT available ❌",
+        "error"
+      );
+    }
+
+
+    const profile = await liff.getProfile();
+
+    log(
+      "9. LINE profile acquired: " +
+      profile.displayName,
+      "ok"
+    );
+
+
+    log(
+      "🎉 LIFF TEST PASSED",
+      "ok"
+    );
+
+
+  } catch (err) {
+
+    log(
+      "❌ ERROR: " +
+      (err.message || String(err)),
+      "error"
+    );
+  }
+}
+
+
+window.addEventListener(
+  "load",
+  start
+);
+
+</script>
+
+</body>
+</html>
