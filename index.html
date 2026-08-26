@@ -1,3 +1,5 @@
+<!-- index.html -->
+<!-- 2026-08-27 00:49 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 
@@ -12,7 +14,6 @@
 
   <title>Chungli TM Secure LIFF Test</title>
 
-
   <style>
 
     body {
@@ -23,7 +24,6 @@
       margin: 0;
     }
 
-
     .box {
       max-width: 600px;
       margin: 20px auto;
@@ -32,12 +32,10 @@
       padding: 22px;
     }
 
-
     h1 {
       color: #f2df74;
       font-size: 22px;
     }
-
 
     .status {
       background: #020617;
@@ -48,21 +46,17 @@
       line-height: 1.5;
     }
 
-
     .ok {
       color: #34d399;
     }
-
 
     .info {
       color: #38bdf8;
     }
 
-
     .error {
       color: #f87171;
     }
-
 
     .identity {
       display: none;
@@ -73,7 +67,6 @@
       border-radius: 12px;
     }
 
-
     .identity-name {
       color: #f2df74;
       font-size: 18px;
@@ -81,14 +74,12 @@
       margin-bottom: 8px;
     }
 
-
     .identity-uid {
       color: #94a3b8;
       font-family: monospace;
       font-size: 11px;
       word-break: break-all;
     }
-
 
     iframe {
       display: none;
@@ -98,14 +89,12 @@
 
 </head>
 
-
 <body>
 
 
 <div class="box">
 
   <h1>🔐 Chungli TM Hardened V2</h1>
-
 
   <div
     id="liffStatus"
@@ -149,21 +138,10 @@
 </div>
 
 
-
-<!--
-  Apps Script secure bridge.
-
-  It is deliberately hidden.
-
-  IMPORTANT:
-  The LIFF SDK runs ONLY in the GitHub top-level page.
--->
-
 <iframe
   id="appsScriptBridge"
   src="https://script.google.com/macros/s/AKfycbyhmPjTJwPqJtoa8vqBRkKbozqA3id1SK3d9HDsDp2RD-UCiKWHuCa55ZElZtrx3SpUag/exec?page=guest"
 ></iframe>
-
 
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -171,25 +149,18 @@
 
 <script>
 
-const LIFF_ID =
-  "2011276672-eLuALXUR";
+const LIFF_ID = "2011276672-eLuALXUR";
+
+let idToken = "";
+
+let bridgeWindow = null;
+
+let bridgeOrigin = "";
 
 
-let idToken =
-  "";
-
-
-let bridgeWindow =
-  null;
-
-
-let bridgeOrigin =
-  "";
-
-
-/**
+/*
  * ============================================================
- * Receive secure messages from Apps Script bridge
+ * Messages from the Apps Script nested bridge
  * ============================================================
  */
 
@@ -197,46 +168,36 @@ window.addEventListener(
   "message",
   function(event) {
 
+    const data = event.data || {};
 
-    // ----------------------------------------------------------
-    // Bridge announces itself first.
-    //
-    // We do NOT guess the dynamic googleusercontent origin.
-    // We learn it from the iframe window itself.
-    // ----------------------------------------------------------
+
+    /*
+     * Apps Script may run from a dynamic
+     * *.script.googleusercontent.com origin.
+     *
+     * We don't guess that origin in advance.
+     * We learn the exact window + exact origin from READY,
+     * then use only that exact pair for the rest of this session.
+     */
 
     if (
-      event.data &&
-      event.data.type ===
-        "CHUNGLI_LIFF_BRIDGE_READY"
+      data.type ===
+      "CHUNGLI_LIFF_BRIDGE_READY"
     ) {
 
-      const iframe =
-        document.getElementById(
-          "appsScriptBridge"
-        );
-
-
-      if (
-        event.source !==
-        iframe.contentWindow
-      ) {
+      if (!isAllowedGoogleBridgeOrigin(event.origin)) {
         return;
       }
 
 
-      bridgeWindow =
-        event.source;
-
-
-      bridgeOrigin =
-        event.origin;
+      bridgeWindow = event.source;
+      bridgeOrigin = event.origin;
 
 
       document.getElementById(
         "serverStatus"
       ).textContent =
-        "✅ Secure bridge connected.";
+        "✅ Secure Apps Script bridge connected.";
 
 
       document.getElementById(
@@ -251,16 +212,10 @@ window.addEventListener(
     }
 
 
-    // ----------------------------------------------------------
-    // Verification result
-    // ----------------------------------------------------------
-
     if (
-      event.data &&
-      event.data.type ===
-        "CHUNGLI_VERIFY_RESULT"
+      data.type ===
+      "CHUNGLI_VERIFY_RESULT"
     ) {
-
 
       if (
         !bridgeWindow ||
@@ -272,7 +227,7 @@ window.addEventListener(
 
 
       const result =
-        event.data.result || {};
+        data.result || {};
 
 
       if (
@@ -336,9 +291,37 @@ window.addEventListener(
 
 
 
-/**
+function isAllowedGoogleBridgeOrigin(origin) {
+
+  try {
+
+    const u = new URL(origin);
+
+    if (u.protocol !== "https:") {
+      return false;
+    }
+
+
+    return (
+      u.hostname === "script.google.com" ||
+      u.hostname.endsWith(
+        ".script.googleusercontent.com"
+      ) ||
+      u.hostname ===
+        "script.googleusercontent.com"
+    );
+
+  } catch (e) {
+
+    return false;
+  }
+}
+
+
+
+/*
  * ============================================================
- * Send token only after BOTH sides are ready
+ * Send token after BOTH LIFF and bridge are ready
  * ============================================================
  */
 
@@ -373,7 +356,6 @@ function tryVerify() {
       idToken:
         idToken
     },
-
     bridgeOrigin
   );
 
@@ -381,7 +363,7 @@ function tryVerify() {
 
 
 
-/**
+/*
  * ============================================================
  * LIFF Startup
  * ============================================================
@@ -398,8 +380,7 @@ async function startLiff() {
   try {
 
     await liff.init({
-      liffId:
-        LIFF_ID
+      liffId: LIFF_ID
     });
 
 
