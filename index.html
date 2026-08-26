@@ -1,5 +1,5 @@
 <!-- index.html -->
-<!-- 2026-08-27 01:33 -->
+<!-- 2026-08-27 01:49 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 
@@ -11,7 +11,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Chungli TM Secure LIFF Test</title>
+  <title>Chungli TM LIFF Poll Diagnostic</title>
 
   <style>
     * {
@@ -33,7 +33,7 @@
 
     .box {
       width: 100%;
-      max-width: 600px;
+      max-width: 620px;
       margin: 20px auto;
       padding: 22px;
       background: #1e293b;
@@ -67,6 +67,28 @@
 
     .error {
       color: #f87171;
+    }
+
+    .diag {
+      margin-top: 18px;
+      padding: 14px;
+      background: #020617;
+      border: 1px solid #475569;
+      border-radius: 12px;
+    }
+
+    .diag-title {
+      color: #f2df74;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .diag-line {
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 5px;
+      word-break: break-all;
     }
 
     .identity {
@@ -107,12 +129,11 @@
   </style>
 </head>
 
-
 <body>
 
   <div class="box">
 
-    <h1>🔐 Chungli TM Hardened V2</h1>
+    <h1>🧪 Chungli TM Poll Diagnostic</h1>
 
 
     <div
@@ -128,6 +149,17 @@
       class="status info"
     >
       ⏳ Waiting for LINE login...
+    </div>
+
+
+    <div class="diag">
+
+      <div class="diag-title">
+        🔍 Poll Diagnostic
+      </div>
+
+      <div id="diagLog"></div>
+
     </div>
 
 
@@ -157,12 +189,6 @@
   </div>
 
 
-  <!--
-    ID Token POST target.
-
-    Token stays in POST body.
-    It is never placed in the URL.
-  -->
   <iframe
     id="verifyFrame"
     name="verifyFrame"
@@ -195,56 +221,94 @@
 
 
     const MAX_POLLS =
-      20;
+      10;
 
 
 
-    /*
-     * ==========================================================
-     * Generate random request ID
-     * ==========================================================
-     */
+    function diag(
+      text,
+      type
+    ) {
 
-    function createRequestId() {
-
-      if (
-        window.crypto &&
-        typeof window.crypto.randomUUID === "function"
-      ) {
-
-        return window.crypto
-          .randomUUID()
-          .replace(/-/g, "");
-      }
+      const log =
+        document.getElementById(
+          "diagLog"
+        );
 
 
-      const array =
-        new Uint32Array(4);
+      const line =
+        document.createElement(
+          "div"
+        );
 
 
-      window.crypto.getRandomValues(
-        array
+      line.className =
+        "diag-line " +
+        (
+          type ||
+          "info"
+        );
+
+
+      line.textContent =
+        text;
+
+
+      log.appendChild(
+        line
       );
-
-
-      return Array.from(array)
-        .map(function(n) {
-
-          return n
-            .toString(16)
-            .padStart(8, "0");
-
-        })
-        .join("");
     }
 
 
 
-    /*
-     * ==========================================================
-     * POST token to Apps Script
-     * ==========================================================
-     */
+    function createRequestId() {
+
+      try {
+
+        if (
+          window.crypto &&
+          typeof window.crypto.randomUUID === "function"
+        ) {
+
+          return window.crypto
+            .randomUUID()
+            .replace(/-/g, "");
+        }
+
+
+        const array =
+          new Uint32Array(4);
+
+
+        window.crypto.getRandomValues(
+          array
+        );
+
+
+        return Array.from(array)
+          .map(function(n) {
+
+            return n
+              .toString(16)
+              .padStart(8, "0");
+
+          })
+          .join("");
+
+
+      } catch (err) {
+
+        return (
+          "fallback" +
+          Date.now() +
+          Math.floor(
+            Math.random() * 1000000
+          )
+        );
+      }
+    }
+
+
 
     function sendTokenToServer(
       idToken
@@ -252,6 +316,13 @@
 
       requestId =
         createRequestId();
+
+
+      diag(
+        "POST request_id created: " +
+        requestId,
+        "info"
+      );
 
 
       const serverStatus =
@@ -290,9 +361,6 @@
         "none";
 
 
-      /*
-       * action
-       */
       const actionInput =
         document.createElement(
           "input"
@@ -316,9 +384,6 @@
       );
 
 
-      /*
-       * request_id
-       */
       const requestInput =
         document.createElement(
           "input"
@@ -342,9 +407,6 @@
       );
 
 
-      /*
-       * LINE ID Token
-       */
       const tokenInput =
         document.createElement(
           "input"
@@ -373,15 +435,36 @@
       );
 
 
-      /*
-       * Submit to hidden iframe.
-       */
-      form.submit();
+      diag(
+        "Submitting POST form...",
+        "info"
+      );
 
 
-      /*
-       * Immediately remove token from DOM.
-       */
+      try {
+
+        form.submit();
+
+
+        diag(
+          "POST form submitted.",
+          "ok"
+        );
+
+
+      } catch (err) {
+
+        diag(
+          "POST submit ERROR: " +
+          (
+            err.message ||
+            String(err)
+          ),
+          "error"
+        );
+      }
+
+
       setTimeout(
         function() {
 
@@ -389,42 +472,62 @@
             "";
 
 
-          if (form.parentNode) {
+          if (
+            form.parentNode
+          ) {
 
             form.parentNode.removeChild(
               form
             );
           }
 
+
+          diag(
+            "Token removed from DOM.",
+            "ok"
+          );
+
         },
         150
       );
 
 
-      /*
-       * Give Apps Script a little time,
-       * then start polling.
-       */
       setTimeout(
-        pollVerificationResult,
-        800
+        function() {
+
+          diag(
+            "Starting first poll...",
+            "info"
+          );
+
+
+          pollVerificationResult();
+
+        },
+        1000
       );
     }
 
 
 
-    /*
-     * ==========================================================
-     * JSONP callback
-     * ==========================================================
-     */
-
     window.chungliLiffPollCallback =
       function(response) {
+
+        diag(
+          "JSONP callback RECEIVED",
+          "ok"
+        );
+
 
         if (
           verificationFinished
         ) {
+
+          diag(
+            "Ignored callback because verification already finished.",
+            "info"
+          );
+
           return;
         }
 
@@ -433,6 +536,12 @@
           response &&
           response.ready === true
         ) {
+
+          diag(
+            "Response ready=true",
+            "ok"
+          );
+
 
           verificationFinished =
             true;
@@ -447,9 +556,12 @@
         }
 
 
-        /*
-         * Not ready yet.
-         */
+        diag(
+          "Response ready=false",
+          "info"
+        );
+
+
         if (
           pollCount < MAX_POLLS
         ) {
@@ -463,29 +575,37 @@
         } else {
 
           showVerificationError(
-            "Verification timeout: Apps Script did not produce a result."
+            "Verification timeout after polling."
           );
         }
       };
 
 
 
-    /*
-     * ==========================================================
-     * Poll Apps Script using JSONP
-     * ==========================================================
-     */
-
     function pollVerificationResult() {
 
       if (
         verificationFinished
       ) {
+
+        diag(
+          "Poll skipped: already finished.",
+          "info"
+        );
+
         return;
       }
 
 
       pollCount++;
+
+
+      diag(
+        "Poll #" +
+        pollCount +
+        " started",
+        "info"
+      );
 
 
       const serverStatus =
@@ -495,7 +615,7 @@
 
 
       serverStatus.textContent =
-        "⏳ Verifying with LINE server... (" +
+        "⏳ Polling Apps Script... (" +
         pollCount +
         "/" +
         MAX_POLLS +
@@ -512,12 +632,7 @@
         );
 
 
-      /*
-       * Only request_id appears in URL.
-       *
-       * ID Token is NOT included.
-       */
-      script.src =
+      const pollUrl =
         APPS_SCRIPT_URL +
         "?action=liff_poll" +
         "&request_id=" +
@@ -532,12 +647,28 @@
         Date.now();
 
 
+      diag(
+        "Creating JSONP script tag...",
+        "info"
+      );
+
+
+      script.src =
+        pollUrl;
+
+
       script.async =
         true;
 
 
       script.onload =
         function() {
+
+          diag(
+            "JSONP script ONLOAD fired",
+            "ok"
+          );
+
 
           if (
             script.parentNode
@@ -552,6 +683,12 @@
 
       script.onerror =
         function() {
+
+          diag(
+            "JSONP script ONERROR fired",
+            "error"
+          );
+
 
           if (
             script.parentNode
@@ -576,18 +713,33 @@
         };
 
 
-      document.head.appendChild(
-        script
-      );
+      try {
+
+        document.head.appendChild(
+          script
+        );
+
+
+        diag(
+          "JSONP script appended to HEAD",
+          "ok"
+        );
+
+
+      } catch (err) {
+
+        diag(
+          "appendChild ERROR: " +
+          (
+            err.message ||
+            String(err)
+          ),
+          "error"
+        );
+      }
     }
 
 
-
-    /*
-     * ==========================================================
-     * Handle verification result
-     * ==========================================================
-     */
 
     function handleVerificationResult(
       result
@@ -633,6 +785,12 @@
           result.userId;
 
 
+        diag(
+          "Verification PASSED",
+          "ok"
+        );
+
+
       } else {
 
         showVerificationError(
@@ -643,12 +801,6 @@
     }
 
 
-
-    /*
-     * ==========================================================
-     * Error display
-     * ==========================================================
-     */
 
     function showVerificationError(
       message
@@ -665,21 +817,22 @@
 
 
       serverStatus.textContent =
-        "❌ Server verification failed: " +
+        "❌ " +
         message;
 
 
       serverStatus.className =
         "status error";
+
+
+      diag(
+        "FINAL ERROR: " +
+        message,
+        "error"
+      );
     }
 
 
-
-    /*
-     * ==========================================================
-     * LIFF startup
-     * ==========================================================
-     */
 
     async function startLiff() {
 
@@ -689,18 +842,30 @@
         );
 
 
-      const serverStatus =
-        document.getElementById(
-          "serverStatus"
+      try {
+
+        diag(
+          "window load fired",
+          "ok"
         );
 
 
-      try {
+        diag(
+          "Calling liff.init()...",
+          "info"
+        );
+
 
         await liff.init({
           liffId:
             LIFF_ID
         });
+
+
+        diag(
+          "liff.init SUCCESS",
+          "ok"
+        );
 
 
         if (
@@ -711,8 +876,10 @@
             "🔐 Redirecting to LINE Login...";
 
 
-          liffStatus.className =
-            "status info";
+          diag(
+            "Not logged in. Calling liff.login()",
+            "info"
+          );
 
 
           liff.login();
@@ -725,7 +892,9 @@
           liff.getIDToken();
 
 
-        if (!idToken) {
+        if (
+          !idToken
+        ) {
 
           throw new Error(
             "LINE ID Token unavailable."
@@ -741,17 +910,12 @@
           "status ok";
 
 
-        serverStatus.textContent =
-          "⏳ Starting server-side LINE verification...";
+        diag(
+          "ID Token acquired. Token NOT displayed.",
+          "ok"
+        );
 
 
-        serverStatus.className =
-          "status info";
-
-
-        /*
-         * Never print or log ID Token.
-         */
         sendTokenToServer(
           idToken
         );
@@ -762,10 +926,8 @@
         liffStatus.textContent =
           "❌ LIFF error: " +
           (
-            err &&
-            err.message
-              ? err.message
-              : String(err)
+            err.message ||
+            String(err)
           );
 
 
@@ -773,12 +935,14 @@
           "status error";
 
 
-        serverStatus.textContent =
-          "❌ Server verification was not started.";
-
-
-        serverStatus.className =
-          "status error";
+        diag(
+          "LIFF ERROR: " +
+          (
+            err.message ||
+            String(err)
+          ),
+          "error"
+        );
       }
     }
 
