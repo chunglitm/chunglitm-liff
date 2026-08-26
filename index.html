@@ -1,5 +1,5 @@
 <!-- index.html -->
-<!-- 2026-08-27 01:05 -->
+<!-- 2026-08-27 01:33 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 
@@ -19,34 +19,39 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: #0f172a;
-      color: #ffffff;
       margin: 0;
       padding: 20px;
+      background: #0f172a;
+      color: #ffffff;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
     }
 
     .box {
       width: 100%;
       max-width: 600px;
       margin: 20px auto;
+      padding: 22px;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 18px;
-      padding: 22px;
     }
 
     h1 {
+      margin: 0 0 20px 0;
       color: #f2df74;
       font-size: 23px;
-      margin: 0 0 20px 0;
     }
 
     .status {
+      margin: 12px 0;
+      padding: 16px;
       background: #020617;
       border-radius: 12px;
-      padding: 16px;
-      margin: 12px 0;
       font-size: 15px;
       line-height: 1.55;
       word-break: break-word;
@@ -66,24 +71,24 @@
 
     .identity {
       display: none;
+      margin-top: 16px;
+      padding: 16px;
       background: #0b132b;
       border: 1px solid #059669;
       border-radius: 12px;
-      padding: 16px;
-      margin-top: 16px;
     }
 
     .identity-name {
+      margin-bottom: 8px;
       color: #f2df74;
       font-size: 19px;
       font-weight: 700;
-      margin-bottom: 8px;
     }
 
     .identity-verified {
+      margin-bottom: 10px;
       color: #34d399;
       font-size: 14px;
-      margin-bottom: 10px;
     }
 
     .identity-uid {
@@ -101,6 +106,7 @@
     }
   </style>
 </head>
+
 
 <body>
 
@@ -133,8 +139,7 @@
       <div
         id="identityName"
         class="identity-name"
-      >
-      </div>
+      ></div>
 
 
       <div class="identity-verified">
@@ -145,8 +150,7 @@
       <div
         id="identityUid"
         class="identity-uid"
-      >
-      </div>
+      ></div>
 
     </div>
 
@@ -154,10 +158,10 @@
 
 
   <!--
-    Hardened V2 verification result is loaded here.
+    ID Token POST target.
 
-    ID Token is sent using POST body.
-    It is NOT placed in the URL.
+    Token stays in POST body.
+    It is never placed in the URL.
   -->
   <iframe
     id="verifyFrame"
@@ -178,169 +182,76 @@
       "https://script.google.com/macros/s/AKfycbyhmPjTJwPqJtoa8vqBRkKbozqA3id1SK3d9HDsDp2RD-UCiKWHuCa55ZElZtrx3SpUag/exec";
 
 
-    let verificationStarted =
-      false;
+    let requestId =
+      "";
 
 
     let verificationFinished =
       false;
 
 
+    let pollCount =
+      0;
+
+
+    const MAX_POLLS =
+      20;
+
+
+
     /*
      * ==========================================================
-     * Check that verification result came from Google
+     * Generate random request ID
      * ==========================================================
      */
 
-    function isAllowedGoogleOrigin(origin) {
+    function createRequestId() {
 
-      try {
+      if (
+        window.crypto &&
+        typeof window.crypto.randomUUID === "function"
+      ) {
 
-        const url =
-          new URL(origin);
-
-
-        if (url.protocol !== "https:") {
-          return false;
-        }
-
-
-        return (
-          url.hostname === "script.google.com" ||
-          url.hostname === "script.googleusercontent.com" ||
-          url.hostname.endsWith(
-            ".script.googleusercontent.com"
-          )
-        );
-
-
-      } catch (e) {
-
-        return false;
+        return window.crypto
+          .randomUUID()
+          .replace(/-/g, "");
       }
+
+
+      const array =
+        new Uint32Array(4);
+
+
+      window.crypto.getRandomValues(
+        array
+      );
+
+
+      return Array.from(array)
+        .map(function(n) {
+
+          return n
+            .toString(16)
+            .padStart(8, "0");
+
+        })
+        .join("");
     }
 
 
 
     /*
      * ==========================================================
-     * Receive verified result from Apps Script
+     * POST token to Apps Script
      * ==========================================================
      */
 
-    window.addEventListener(
-      "message",
-      function(event) {
+    function sendTokenToServer(
+      idToken
+    ) {
 
-        const data =
-          event.data || {};
-
-
-        if (
-          data.type !==
-          "CHUNGLI_LIFF_VERIFY_RESULT"
-        ) {
-          return;
-        }
-
-
-        if (
-          !isAllowedGoogleOrigin(
-            event.origin
-          )
-        ) {
-
-          return;
-        }
-
-
-        if (verificationFinished) {
-          return;
-        }
-
-
-        verificationFinished =
-          true;
-
-
-        const result =
-          data.result || {};
-
-
-        const serverStatus =
-          document.getElementById(
-            "serverStatus"
-          );
-
-
-        if (
-          result.ok === true &&
-          result.verified === true &&
-          result.userId
-        ) {
-
-          serverStatus.textContent =
-            "✅ Server-side LINE verification PASSED";
-
-
-          serverStatus.className =
-            "status ok";
-
-
-          document.getElementById(
-            "identityBox"
-          ).style.display =
-            "block";
-
-
-          document.getElementById(
-            "identityName"
-          ).textContent =
-            result.displayName ||
-            "LINE User";
-
-
-          document.getElementById(
-            "identityUid"
-          ).textContent =
-            "Verified UID: " +
-            result.userId;
-
-
-        } else {
-
-          serverStatus.textContent =
-            "❌ Server verification failed: " +
-            (
-              result.error ||
-              "Unknown verification error"
-            );
-
-
-          serverStatus.className =
-            "status error";
-        }
-
-      }
-    );
-
-
-
-    /*
-     * ==========================================================
-     * POST ID Token to Apps Script
-     * ==========================================================
-     */
-
-    function verifyWithServer(idToken) {
-
-      if (verificationStarted) {
-        return;
-      }
-
-
-      verificationStarted =
-        true;
+      requestId =
+        createRequestId();
 
 
       const serverStatus =
@@ -357,12 +268,6 @@
         "status info";
 
 
-      /*
-       * Create a temporary HTML form.
-       *
-       * This avoids CORS because this is normal browser
-       * form submission rather than fetch().
-       */
       const form =
         document.createElement(
           "form"
@@ -412,6 +317,32 @@
 
 
       /*
+       * request_id
+       */
+      const requestInput =
+        document.createElement(
+          "input"
+        );
+
+
+      requestInput.type =
+        "hidden";
+
+
+      requestInput.name =
+        "request_id";
+
+
+      requestInput.value =
+        requestId;
+
+
+      form.appendChild(
+        requestInput
+      );
+
+
+      /*
        * LINE ID Token
        */
       const tokenInput =
@@ -443,14 +374,13 @@
 
 
       /*
-       * Submit into hidden iframe.
+       * Submit to hidden iframe.
        */
       form.submit();
 
 
       /*
-       * Remove token-containing DOM elements immediately
-       * after browser starts submission.
+       * Immediately remove token from DOM.
        */
       setTimeout(
         function() {
@@ -467,30 +397,17 @@
           }
 
         },
-        100
+        150
       );
 
 
       /*
-       * Diagnostic timeout.
+       * Give Apps Script a little time,
+       * then start polling.
        */
       setTimeout(
-        function() {
-
-          if (
-            !verificationFinished
-          ) {
-
-            serverStatus.textContent =
-              "❌ Verification timeout: Apps Script did not return a result within 20 seconds.";
-
-
-            serverStatus.className =
-              "status error";
-          }
-
-        },
-        20000
+        pollVerificationResult,
+        800
       );
     }
 
@@ -498,7 +415,269 @@
 
     /*
      * ==========================================================
-     * LIFF Startup
+     * JSONP callback
+     * ==========================================================
+     */
+
+    window.chungliLiffPollCallback =
+      function(response) {
+
+        if (
+          verificationFinished
+        ) {
+          return;
+        }
+
+
+        if (
+          response &&
+          response.ready === true
+        ) {
+
+          verificationFinished =
+            true;
+
+
+          handleVerificationResult(
+            response.result || {}
+          );
+
+
+          return;
+        }
+
+
+        /*
+         * Not ready yet.
+         */
+        if (
+          pollCount < MAX_POLLS
+        ) {
+
+          setTimeout(
+            pollVerificationResult,
+            1000
+          );
+
+
+        } else {
+
+          showVerificationError(
+            "Verification timeout: Apps Script did not produce a result."
+          );
+        }
+      };
+
+
+
+    /*
+     * ==========================================================
+     * Poll Apps Script using JSONP
+     * ==========================================================
+     */
+
+    function pollVerificationResult() {
+
+      if (
+        verificationFinished
+      ) {
+        return;
+      }
+
+
+      pollCount++;
+
+
+      const serverStatus =
+        document.getElementById(
+          "serverStatus"
+        );
+
+
+      serverStatus.textContent =
+        "⏳ Verifying with LINE server... (" +
+        pollCount +
+        "/" +
+        MAX_POLLS +
+        ")";
+
+
+      serverStatus.className =
+        "status info";
+
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+
+      /*
+       * Only request_id appears in URL.
+       *
+       * ID Token is NOT included.
+       */
+      script.src =
+        APPS_SCRIPT_URL +
+        "?action=liff_poll" +
+        "&request_id=" +
+        encodeURIComponent(
+          requestId
+        ) +
+        "&callback=" +
+        encodeURIComponent(
+          "chungliLiffPollCallback"
+        ) +
+        "&_=" +
+        Date.now();
+
+
+      script.async =
+        true;
+
+
+      script.onload =
+        function() {
+
+          if (
+            script.parentNode
+          ) {
+
+            script.parentNode.removeChild(
+              script
+            );
+          }
+        };
+
+
+      script.onerror =
+        function() {
+
+          if (
+            script.parentNode
+          ) {
+
+            script.parentNode.removeChild(
+              script
+            );
+          }
+
+
+          if (
+            !verificationFinished &&
+            pollCount < MAX_POLLS
+          ) {
+
+            setTimeout(
+              pollVerificationResult,
+              1000
+            );
+          }
+        };
+
+
+      document.head.appendChild(
+        script
+      );
+    }
+
+
+
+    /*
+     * ==========================================================
+     * Handle verification result
+     * ==========================================================
+     */
+
+    function handleVerificationResult(
+      result
+    ) {
+
+      const serverStatus =
+        document.getElementById(
+          "serverStatus"
+        );
+
+
+      if (
+        result.ok === true &&
+        result.verified === true &&
+        result.userId
+      ) {
+
+        serverStatus.textContent =
+          "✅ Server-side LINE verification PASSED";
+
+
+        serverStatus.className =
+          "status ok";
+
+
+        document.getElementById(
+          "identityBox"
+        ).style.display =
+          "block";
+
+
+        document.getElementById(
+          "identityName"
+        ).textContent =
+          result.displayName ||
+          "LINE User";
+
+
+        document.getElementById(
+          "identityUid"
+        ).textContent =
+          "Verified UID: " +
+          result.userId;
+
+
+      } else {
+
+        showVerificationError(
+          result.error ||
+          "LINE identity verification failed."
+        );
+      }
+    }
+
+
+
+    /*
+     * ==========================================================
+     * Error display
+     * ==========================================================
+     */
+
+    function showVerificationError(
+      message
+    ) {
+
+      verificationFinished =
+        true;
+
+
+      const serverStatus =
+        document.getElementById(
+          "serverStatus"
+        );
+
+
+      serverStatus.textContent =
+        "❌ Server verification failed: " +
+        message;
+
+
+      serverStatus.className =
+        "status error";
+    }
+
+
+
+    /*
+     * ==========================================================
+     * LIFF startup
      * ==========================================================
      */
 
@@ -519,11 +698,14 @@
       try {
 
         await liff.init({
-          liffId: LIFF_ID
+          liffId:
+            LIFF_ID
         });
 
 
-        if (!liff.isLoggedIn()) {
+        if (
+          !liff.isLoggedIn()
+        ) {
 
           liffStatus.textContent =
             "🔐 Redirecting to LINE Login...";
@@ -568,11 +750,9 @@
 
 
         /*
-         * Send token to Apps Script.
-         *
-         * We deliberately do NOT display or log the token.
+         * Never print or log ID Token.
          */
-        verifyWithServer(
+        sendTokenToServer(
           idToken
         );
 
