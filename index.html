@@ -1,8 +1,7 @@
 <!-- index.html -->
-<!-- 2026-08-27 01:49 -->
+<!-- 2026-08-27 02:27 Taiwan -->
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
   <meta charset="UTF-8">
 
@@ -11,7 +10,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Chungli TM LIFF Poll Diagnostic</title>
+  <title>Chungli TM Secure LIFF</title>
 
   <style>
     * {
@@ -33,7 +32,7 @@
 
     .box {
       width: 100%;
-      max-width: 620px;
+      max-width: 600px;
       margin: 20px auto;
       padding: 22px;
       background: #1e293b;
@@ -69,28 +68,6 @@
       color: #f87171;
     }
 
-    .diag {
-      margin-top: 18px;
-      padding: 14px;
-      background: #020617;
-      border: 1px solid #475569;
-      border-radius: 12px;
-    }
-
-    .diag-title {
-      color: #f2df74;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .diag-line {
-      font-family: monospace;
-      font-size: 12px;
-      line-height: 1.55;
-      margin-bottom: 5px;
-      word-break: break-all;
-    }
-
     .identity {
       display: none;
       margin-top: 16px;
@@ -107,17 +84,9 @@
       font-weight: 700;
     }
 
-    .identity-verified {
-      margin-bottom: 10px;
+    .identity-note {
       color: #34d399;
       font-size: 14px;
-    }
-
-    .identity-uid {
-      color: #94a3b8;
-      font-family: monospace;
-      font-size: 11px;
-      word-break: break-all;
     }
 
     #verifyFrame {
@@ -133,14 +102,14 @@
 
   <div class="box">
 
-    <h1>🧪 Chungli TM Poll Diagnostic</h1>
+    <h1>🔐 Chungli TM Secure Login</h1>
 
 
     <div
       id="liffStatus"
       class="status info"
     >
-      ⏳ Starting LIFF...
+      ⏳ Starting LINE Login...
     </div>
 
 
@@ -148,18 +117,7 @@
       id="serverStatus"
       class="status info"
     >
-      ⏳ Waiting for LINE login...
-    </div>
-
-
-    <div class="diag">
-
-      <div class="diag-title">
-        🔍 Poll Diagnostic
-      </div>
-
-      <div id="diagLog"></div>
-
+      ⏳ Waiting for secure verification...
     </div>
 
 
@@ -173,22 +131,19 @@
         class="identity-name"
       ></div>
 
-
-      <div class="identity-verified">
-        ✅ Identity verified by LINE server
+      <div class="identity-note">
+        ✅ LINE identity verified securely
       </div>
-
-
-      <div
-        id="identityUid"
-        class="identity-uid"
-      ></div>
 
     </div>
 
   </div>
 
 
+  <!--
+    ID Token is submitted only through POST body.
+    It is never placed in the URL.
+  -->
   <iframe
     id="verifyFrame"
     name="verifyFrame"
@@ -221,46 +176,15 @@
 
 
     const MAX_POLLS =
-      10;
+      20;
 
 
 
-    function diag(
-      text,
-      type
-    ) {
-
-      const log =
-        document.getElementById(
-          "diagLog"
-        );
-
-
-      const line =
-        document.createElement(
-          "div"
-        );
-
-
-      line.className =
-        "diag-line " +
-        (
-          type ||
-          "info"
-        );
-
-
-      line.textContent =
-        text;
-
-
-      log.appendChild(
-        line
-      );
-    }
-
-
-
+    /*
+     * ==========================================================
+     * Random request ID
+     * ==========================================================
+     */
     function createRequestId() {
 
       try {
@@ -310,19 +234,17 @@
 
 
 
+    /*
+     * ==========================================================
+     * POST LINE ID Token to Apps Script
+     * ==========================================================
+     */
     function sendTokenToServer(
       idToken
     ) {
 
       requestId =
         createRequestId();
-
-
-      diag(
-        "POST request_id created: " +
-        requestId,
-        "info"
-      );
 
 
       const serverStatus =
@@ -332,7 +254,7 @@
 
 
       serverStatus.textContent =
-        "⏳ Sending ID Token securely to Apps Script...";
+        "⏳ Verifying your LINE identity...";
 
 
       serverStatus.className =
@@ -435,36 +357,12 @@
       );
 
 
-      diag(
-        "Submitting POST form...",
-        "info"
-      );
+      form.submit();
 
 
-      try {
-
-        form.submit();
-
-
-        diag(
-          "POST form submitted.",
-          "ok"
-        );
-
-
-      } catch (err) {
-
-        diag(
-          "POST submit ERROR: " +
-          (
-            err.message ||
-            String(err)
-          ),
-          "error"
-        );
-      }
-
-
+      /*
+       * Remove token-containing DOM immediately.
+       */
       setTimeout(
         function() {
 
@@ -481,53 +379,33 @@
             );
           }
 
-
-          diag(
-            "Token removed from DOM.",
-            "ok"
-          );
-
         },
         150
       );
 
 
+      /*
+       * Begin JSONP poll.
+       */
       setTimeout(
-        function() {
-
-          diag(
-            "Starting first poll...",
-            "info"
-          );
-
-
-          pollVerificationResult();
-
-        },
-        1000
+        pollVerificationResult,
+        900
       );
     }
 
 
 
+    /*
+     * ==========================================================
+     * JSONP callback
+     * ==========================================================
+     */
     window.chungliLiffPollCallback =
       function(response) {
-
-        diag(
-          "JSONP callback RECEIVED",
-          "ok"
-        );
-
 
         if (
           verificationFinished
         ) {
-
-          diag(
-            "Ignored callback because verification already finished.",
-            "info"
-          );
-
           return;
         }
 
@@ -536,12 +414,6 @@
           response &&
           response.ready === true
         ) {
-
-          diag(
-            "Response ready=true",
-            "ok"
-          );
-
 
           verificationFinished =
             true;
@@ -556,12 +428,6 @@
         }
 
 
-        diag(
-          "Response ready=false",
-          "info"
-        );
-
-
         if (
           pollCount < MAX_POLLS
         ) {
@@ -574,56 +440,29 @@
 
         } else {
 
-          showVerificationError(
-            "Verification timeout after polling."
+          showFatalError(
+            "Verification timeout. Please close this page and open the tool again from LINE."
           );
         }
       };
 
 
 
+    /*
+     * ==========================================================
+     * Poll Apps Script
+     * ==========================================================
+     */
     function pollVerificationResult() {
 
       if (
         verificationFinished
       ) {
-
-        diag(
-          "Poll skipped: already finished.",
-          "info"
-        );
-
         return;
       }
 
 
       pollCount++;
-
-
-      diag(
-        "Poll #" +
-        pollCount +
-        " started",
-        "info"
-      );
-
-
-      const serverStatus =
-        document.getElementById(
-          "serverStatus"
-        );
-
-
-      serverStatus.textContent =
-        "⏳ Polling Apps Script... (" +
-        pollCount +
-        "/" +
-        MAX_POLLS +
-        ")";
-
-
-      serverStatus.className =
-        "status info";
 
 
       const script =
@@ -632,7 +471,7 @@
         );
 
 
-      const pollUrl =
+      script.src =
         APPS_SCRIPT_URL +
         "?action=liff_poll" +
         "&request_id=" +
@@ -647,28 +486,12 @@
         Date.now();
 
 
-      diag(
-        "Creating JSONP script tag...",
-        "info"
-      );
-
-
-      script.src =
-        pollUrl;
-
-
       script.async =
         true;
 
 
       script.onload =
         function() {
-
-          diag(
-            "JSONP script ONLOAD fired",
-            "ok"
-          );
-
 
           if (
             script.parentNode
@@ -683,12 +506,6 @@
 
       script.onerror =
         function() {
-
-          diag(
-            "JSONP script ONERROR fired",
-            "error"
-          );
-
 
           if (
             script.parentNode
@@ -709,38 +526,30 @@
               pollVerificationResult,
               1000
             );
+
+          } else if (
+            !verificationFinished
+          ) {
+
+            showFatalError(
+              "Unable to contact the secure verification service."
+            );
           }
         };
 
 
-      try {
-
-        document.head.appendChild(
-          script
-        );
-
-
-        diag(
-          "JSONP script appended to HEAD",
-          "ok"
-        );
-
-
-      } catch (err) {
-
-        diag(
-          "appendChild ERROR: " +
-          (
-            err.message ||
-            String(err)
-          ),
-          "error"
-        );
-      }
+      document.head.appendChild(
+        script
+      );
     }
 
 
 
+    /*
+     * ==========================================================
+     * Verified result
+     * ==========================================================
+     */
     function handleVerificationResult(
       result
     ) {
@@ -752,57 +561,115 @@
 
 
       if (
-        result.ok === true &&
-        result.verified === true &&
-        result.userId
+        result.ok !== true ||
+        result.verified !== true
       ) {
 
-        serverStatus.textContent =
-          "✅ Server-side LINE verification PASSED";
-
-
-        serverStatus.className =
-          "status ok";
-
-
-        document.getElementById(
-          "identityBox"
-        ).style.display =
-          "block";
-
-
-        document.getElementById(
-          "identityName"
-        ).textContent =
-          result.displayName ||
-          "LINE User";
-
-
-        document.getElementById(
-          "identityUid"
-        ).textContent =
-          "Verified UID: " +
-          result.userId;
-
-
-        diag(
-          "Verification PASSED",
-          "ok"
-        );
-
-
-      } else {
-
-        showVerificationError(
+        showFatalError(
           result.error ||
           "LINE identity verification failed."
         );
+
+        return;
       }
+
+
+      /*
+       * Hardened V2 requires an opaque short-lived web session.
+       */
+      const sessionToken =
+        String(
+          result.sessionToken ||
+          ""
+        ).trim();
+
+
+      if (!sessionToken) {
+
+        showFatalError(
+          "Secure web session was not issued. Please reopen the tool from LINE."
+        );
+
+        return;
+      }
+
+
+      document.getElementById(
+        "identityBox"
+      ).style.display =
+        "block";
+
+
+      document.getElementById(
+        "identityName"
+      ).textContent =
+        result.displayName ||
+        "Verified LINE User";
+
+
+      /*
+       * Guest Invitation is VPE / President only.
+       */
+      const permissions =
+        result.permissions || {};
+
+
+      if (
+        permissions.guestInvitation !== true
+      ) {
+
+        serverStatus.textContent =
+          "🔒 Access Restricted: Guest Invitation is available only to VPE and Club President.";
+
+
+        serverStatus.className =
+          "status error";
+
+        return;
+      }
+
+
+      serverStatus.textContent =
+        "✅ Verified. Opening Guest Invitation Console...";
+
+
+      serverStatus.className =
+        "status ok";
+
+
+      /*
+       * Only the opaque short-lived session token is placed in the URL.
+       * The LINE UID and ID Token are NOT placed in the URL.
+       */
+      const guestUrl =
+        APPS_SCRIPT_URL +
+        "?page=guest" +
+        "&session=" +
+        encodeURIComponent(
+          sessionToken
+        );
+
+
+      setTimeout(
+        function() {
+
+          window.location.replace(
+            guestUrl
+          );
+
+        },
+        500
+      );
     }
 
 
 
-    function showVerificationError(
+    /*
+     * ==========================================================
+     * Fatal error
+     * ==========================================================
+     */
+    function showFatalError(
       message
     ) {
 
@@ -823,17 +690,15 @@
 
       serverStatus.className =
         "status error";
-
-
-      diag(
-        "FINAL ERROR: " +
-        message,
-        "error"
-      );
     }
 
 
 
+    /*
+     * ==========================================================
+     * LIFF startup
+     * ==========================================================
+     */
     async function startLiff() {
 
       const liffStatus =
@@ -842,30 +707,18 @@
         );
 
 
+      const serverStatus =
+        document.getElementById(
+          "serverStatus"
+        );
+
+
       try {
-
-        diag(
-          "window load fired",
-          "ok"
-        );
-
-
-        diag(
-          "Calling liff.init()...",
-          "info"
-        );
-
 
         await liff.init({
           liffId:
             LIFF_ID
         });
-
-
-        diag(
-          "liff.init SUCCESS",
-          "ok"
-        );
 
 
         if (
@@ -876,10 +729,8 @@
             "🔐 Redirecting to LINE Login...";
 
 
-          diag(
-            "Not logged in. Calling liff.login()",
-            "info"
-          );
+          liffStatus.className =
+            "status info";
 
 
           liff.login();
@@ -892,9 +743,7 @@
           liff.getIDToken();
 
 
-        if (
-          !idToken
-        ) {
+        if (!idToken) {
 
           throw new Error(
             "LINE ID Token unavailable."
@@ -903,19 +752,24 @@
 
 
         liffStatus.textContent =
-          "✅ LIFF login successful. ID Token acquired.";
+          "✅ LINE Login successful.";
 
 
         liffStatus.className =
           "status ok";
 
 
-        diag(
-          "ID Token acquired. Token NOT displayed.",
-          "ok"
-        );
+        serverStatus.textContent =
+          "⏳ Starting secure server verification...";
 
 
+        serverStatus.className =
+          "status info";
+
+
+        /*
+         * Never display or log the ID Token.
+         */
         sendTokenToServer(
           idToken
         );
@@ -924,10 +778,12 @@
       } catch (err) {
 
         liffStatus.textContent =
-          "❌ LIFF error: " +
+          "❌ LINE Login error: " +
           (
-            err.message ||
-            String(err)
+            err &&
+            err.message
+              ? err.message
+              : String(err)
           );
 
 
@@ -935,14 +791,12 @@
           "status error";
 
 
-        diag(
-          "LIFF ERROR: " +
-          (
-            err.message ||
-            String(err)
-          ),
-          "error"
-        );
+        serverStatus.textContent =
+          "❌ Secure verification was not started.";
+
+
+        serverStatus.className =
+          "status error";
       }
     }
 
@@ -956,5 +810,4 @@
   </script>
 
 </body>
-
 </html>
